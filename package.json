@@ -24,11 +24,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/DudeThatsErin/OneNoteSystemTerminal.git"
+    "url": "git+https://github.com/DudeThatsErin/onenote-terminal.git"
   },
   "homepage": "https://onenotesystem.erinskidds.com/terminal",
   "bugs": {
-    "url": "https://github.com/DudeThatsErin/OneNoteSystemTerminal/issues"
+    "url": "https://github.com/DudeThatsErin/onenote-terminal/issues"
   },
   "keywords": [
     "onenote",

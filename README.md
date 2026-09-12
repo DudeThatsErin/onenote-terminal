@@ -166,8 +166,8 @@ Your note content passes through your own deployment to Microsoft Graph. Nothing
 ## Development
 
 ```bash
-git clone https://github.com/DudeThatsErin/OneNoteSystemTerminal.git
-cd OneNoteSystemTerminal
+git clone https://github.com/DudeThatsErin/onenote-terminal.git
+cd onenote-terminal
 npm test
 ```
 
