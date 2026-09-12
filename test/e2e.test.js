@@ -48,6 +48,19 @@ test('--help and --version exit 0', async () => {
   assert.match(version.stdout.trim(), /^\d+\.\d+\.\d+$/);
 });
 
+// `npm version` only edits package.json. Without this, a release can ship a
+// binary that reports the previous version.
+test('--version matches the version npm will publish', async () => {
+  const { readFileSync } = await import('node:fs');
+  const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+
+  const version = await cli(['--version'], { url: '', apiKey: '' });
+  assert.equal(version.stdout.trim(), pkg.version);
+
+  const help = await cli(['--help'], { url: '', apiKey: '' });
+  assert.match(help.stdout, new RegExp(`^onenotesystem ${pkg.version.replace(/\./g, '\\.')} `));
+});
+
 test('every command has help via --help, -h, and `help <command>`', async () => {
   for (const command of ['configure', 'doctor', 'capture', 'append']) {
     for (const args of [[command, '--help'], [command, '-h'], ['help', command]]) {

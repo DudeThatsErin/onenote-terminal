@@ -1,7 +1,11 @@
+import { createRequire } from 'node:module';
 import { CliError, EXIT } from './exit.js';
 import { append, capture, configure, doctor } from './commands.js';
 
-export const VERSION = '1.0.0';
+// Read from package.json rather than repeating the number here, so `npm version`
+// is the only place a release is recorded and `--version` cannot drift from the
+// version npm actually published.
+export const VERSION = createRequire(import.meta.url)('../package.json').version;
 
 // One entry per command, so `--help`, `help <command>`, and the command list in
 // the top-level help can never drift apart.
