@@ -7,6 +7,7 @@ import { Client } from './client.js';
 import { loadSettings, normalizeUrl, requireSettings, writeConfigFile } from './config.js';
 import { CliError, EXIT } from './exit.js';
 import { createPrompter } from './prompt.js';
+import { formatDue, localTimeZone, parseDueDate } from './dates.js';
 
 // Mirrors MAX_NOTE_CONTENT_LENGTH on the deployment. Checked locally so a
 // pasted file that is far too long fails instantly instead of after an upload.
@@ -303,5 +304,121 @@ export async function append(argv) {
   }
   out(`Appended to "${page.title || payload.pageTitle || page.id}"`);
   if (page.webUrl) out(page.webUrl);
+  return EXIT.OK;
+}
+
+// -------------------------------------------------------------- microsoft to do
+
+// Not every deployment exposes To Do: the endpoints exist only where the
+// Microsoft connection has the Tasks.ReadWrite scope. A bare 404 would read as
+// "no such task", so name the real reason.
+function todoUnsupported(err, settings) {
+  if (err instanceof CliError && err.code === EXIT.NOT_FOUND && /^HTTP 404$/.test(err.message)) {
+    return new CliError(
+      `${settings.url} does not support Microsoft To Do. Point at a deployment that does, or use capture/append.`,
+      EXIT.BACKEND
+    );
+  }
+  return err;
+}
+
+async function todoRequest(client, settings, run) {
+  try {
+    return await run();
+  } catch (err) {
+    throw todoUnsupported(err, settings);
+  }
+}
+
+export async function todoAdd(argv) {
+  const { flags, positionals } = parseArgs(
+    argv,
+    { title: 'string', note: 'string', list: 'string', due: 'string', reminder: 'string', json: 'boolean' },
+    'todo add'
+  );
+
+  const title = checkTitle((flags.title || positionals.join(' ')).trim(), '--title');
+  if (!title) throw new CliError('a task title is required (positional or --title)', EXIT.USAGE);
+
+  const payload = { title, timeZone: localTimeZone() };
+  if (flags.note) payload.note = flags.note;
+  if (flags.list) payload.list = flags.list;
+  if (flags.due) payload.dueDate = parseDueDate(flags.due, '--due');
+  if (flags.reminder) payload.reminder = parseDueDate(flags.reminder, '--reminder');
+
+  const { client, settings } = clientFor();
+  const response = await todoRequest(client, settings, () => client.post('/todo', payload));
+  const task = response.task || {};
+
+  if (flags.json) {
+    emitJson(response);
+    return EXIT.OK;
+  }
+  out(`Added "${task.title || title}" to ${task.list || 'To Do'}`);
+  if (task.dueDateTime) out(`due: ${formatDue(task.dueDateTime)}`);
+  return EXIT.OK;
+}
+
+export async function todoList(argv) {
+  const { flags } = parseArgs(argv, { list: 'string', all: 'boolean', top: 'string', json: 'boolean' }, 'todo list');
+
+  const params = new URLSearchParams();
+  if (flags.list) params.set('list', flags.list);
+  if (flags.all) params.set('all', 'true');
+  if (flags.top) params.set('top', flags.top);
+  const query = params.toString();
+
+  const { client, settings } = clientFor();
+  const response = await todoRequest(client, settings, () => client.get(`/todo${query ? `?${query}` : ''}`));
+  const tasks = response.tasks || [];
+
+  if (flags.json) {
+    emitJson(response);
+    return EXIT.OK;
+  }
+  if (!tasks.length) {
+    out(`No ${flags.all ? '' : 'open '}tasks in "${response.list || 'To Do'}".`);
+    return EXIT.OK;
+  }
+  for (const task of tasks) {
+    const due = task.dueDateTime ? `  [due ${formatDue(task.dueDateTime)}]` : '';
+    out(`${task.completed ? '[x]' : '[ ]'} ${task.title}${due}`);
+    out(`    ${task.id}`);
+  }
+  return EXIT.OK;
+}
+
+export async function todoLists(argv) {
+  const { flags } = parseArgs(argv, { json: 'boolean' }, 'todo lists');
+  const { client, settings } = clientFor();
+  const response = await todoRequest(client, settings, () => client.get('/todo/lists'));
+
+  if (flags.json) {
+    emitJson(response);
+    return EXIT.OK;
+  }
+  for (const list of response.lists || []) {
+    out(`${list.name}${list.isDefault ? '  (default)' : ''}`);
+  }
+  return EXIT.OK;
+}
+
+export async function todoDone(argv) {
+  const { flags, positionals } = parseArgs(argv, { list: 'string', json: 'boolean' }, 'todo done');
+  const id = (positionals[0] || '').trim();
+  if (!id) throw new CliError('a task id is required. Run `onenotesystem todo list` to see them.', EXIT.USAGE);
+
+  const payload = { id };
+  if (flags.list) payload.list = flags.list;
+
+  const { client, settings } = clientFor();
+  const response = await todoRequest(client, settings, () => client.post('/todo/complete', payload));
+  const task = response.task || {};
+
+  if (flags.json) {
+    emitJson(response);
+    return EXIT.OK;
+  }
+  out(`Completed "${task.title || id}"`);
   return EXIT.OK;
 }

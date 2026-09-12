@@ -2,7 +2,7 @@
 
 Create and update Microsoft OneNote pages from any shell.
 
-This is the terminal client for [OneNote System](https://onenotesystem.erinskidds.com). It talks to your own OneNote System deployment over the same two HTTPS endpoints the Apple Shortcuts use — `POST /api/capture` and `POST /api/append` — so a page created from your laptop and a page created from your phone are identical.
+This is the terminal client for [OneNote System](https://onenotesystem.erinskidds.com). It talks to your own OneNote System deployment over the same two HTTPS endpoints the Apple Shortcuts use — `POST /api/capture` and `POST /api/append` — so a page created from your laptop and a page created from your phone are identical. Where the deployment supports it, the same key also drives Microsoft To Do.
 
 It exists for the machines OneNote will not run on: Linux desktops, servers you only reach over SSH, and work computers where you cannot install the OneNote app. All you need is Node and your API key.
 
@@ -122,6 +122,31 @@ onenotesystem append "A thought"
 ```
 
 `--page-title` must match a page title exactly, and that page must be in your configured default section. If two pages share the title, the command stops and asks you to use `--page-id`, because appending to the wrong one silently would be worse.
+
+## Microsoft To Do
+
+`todo` creates and completes Microsoft To Do tasks through the same deployment and the same API key.
+
+```bash
+onenotesystem todo add "Renew the domain" --due +7d
+onenotesystem todo add "Call the bank" --list Errands --due tomorrow --note "Ask about the fee"
+onenotesystem todo list                      # open tasks, with their ids
+onenotesystem todo lists                     # your To Do lists
+onenotesystem todo done AAMkAG...            # mark one complete
+```
+
+| Flag | Meaning |
+| --- | --- |
+| `--list <name>` | Which To Do list to use; defaults to your default list |
+| `--due <when>` | `2026-09-15`, `today`, `tomorrow`, `+3d`, `+2w`, or `2026-09-15T14:30` |
+| `--reminder <when>` | Same formats; also switches the reminder on |
+| `--note <text>` | A longer note on the task |
+| `--all` | On `todo list`, include completed tasks |
+| `--top <n>` | On `todo list`, how many to show (default 25, max 100) |
+
+Dates are sent with your local time zone, so a bare date stays that day rather than shifting for anyone west of UTC.
+
+This works only where the deployment's Microsoft connection has approved To Do access (the `Tasks.ReadWrite` scope). Deployments without it have no To Do endpoints at all, and the client says so rather than reporting a bare 404.
 
 ## Notes on content
 

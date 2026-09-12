@@ -1,6 +1,6 @@
 import { createRequire } from 'node:module';
 import { CliError, EXIT } from './exit.js';
-import { append, capture, configure, doctor } from './commands.js';
+import { append, capture, configure, doctor, todoAdd, todoDone, todoList, todoLists } from './commands.js';
 
 // Read from package.json rather than repeating the number here, so `npm version`
 // is the only place a release is recorded and `--version` cannot drift from the
@@ -101,7 +101,62 @@ Examples
   onenotesystem append "Deploy finished" --page-id "1-abc123!..."
   dmesg | tail -20 | onenotesystem append --stdin --page-title "Server log"`,
   },
+
+  todo: {
+    handler: todoGroup,
+    usage: 'onenotesystem todo <add|list|lists|done> ...',
+    summary: 'Work with Microsoft To Do tasks',
+    detail: `Creates and completes Microsoft To Do tasks through the same
+deployment and the same API key. Available only where the deployment's Microsoft
+connection has approved To Do access.
+
+  onenotesystem todo add <title> [options]   Add a task
+  onenotesystem todo list [options]          Show open tasks
+  onenotesystem todo lists                   Show your To Do lists
+  onenotesystem todo done <id>               Mark a task complete
+
+todo add
+  <title>                Task title, as positional words, or use --title
+  --note <text>          Longer note on the task
+  --list <name>          To Do list to use (default: your default list)
+  --due <when>           2026-09-15, "tomorrow", or "+3d"
+  --reminder <when>      Same formats; sets a reminder
+  --json
+
+todo list
+  --list <name>          Which list to read
+  --all                  Include completed tasks
+  --top <n>              How many to show (default 25, max 100)
+  --json
+
+todo done
+  <id>                   Task id, as shown by \`todo list\`
+  --list <name>          The list the task is in
+  --json
+
+Dates are sent with your local time zone, so a bare date stays that day
+rather than shifting.
+
+Examples
+  onenotesystem todo add "Renew the domain" --due +7d
+  onenotesystem todo add "Call the bank" --list Errands --due tomorrow
+  onenotesystem todo list --list Errands
+  onenotesystem todo done AAMkAG...`,
+  },
 };
+
+function todoGroup(argv) {
+  const [sub, ...rest] = argv;
+  const handlers = { add: todoAdd, list: todoList, lists: todoLists, done: todoDone };
+  const handler = handlers[sub];
+  if (!handler) {
+    throw new CliError(
+      `usage: onenotesystem todo <${Object.keys(handlers).join('|')}> ... (see \`onenotesystem help todo\`)`,
+      EXIT.USAGE
+    );
+  }
+  return handler(rest);
+}
 
 // new -> capture, add -> append, and every canonical name to itself.
 const ALIASES = new Map(
@@ -126,7 +181,7 @@ Docs: https://onenotesystem.erinskidds.com/terminal
 function generalHelp() {
   const rows = Object.entries(COMMANDS).map(([name, spec]) => {
     const alias = spec.aliases?.length ? ` (alias: ${spec.aliases.join(', ')})` : '';
-    return `  ${spec.usage.padEnd(42)}${spec.summary}${alias}`;
+    return `  ${spec.usage.padEnd(45)}${spec.summary}${alias}`;
   });
 
   return `onenotesystem ${VERSION} - create and update Microsoft OneNote pages from the terminal.

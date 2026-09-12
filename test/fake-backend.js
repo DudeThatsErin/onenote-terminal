@@ -13,6 +13,9 @@ export async function startFakeBackend(options = {}) {
     hasDefaultSection = true,
     knownPages = ['Quick Inbox'],
     duplicateTitles = [],
+    // To Do is optional: deployments whose Microsoft connection lacks the
+    // Tasks.ReadWrite scope simply do not serve these routes.
+    todo = null,
     // Impersonate some other site at this address: 'html404' is what an
     // unrelated web app does with /api/health, and a string is a JSON service
     // that answers but identifies itself as something else.
@@ -55,6 +58,33 @@ export async function startFakeBackend(options = {}) {
         ok: true,
         page: { id: 'page-created', title, webUrl: 'https://onenote.example/page-created' },
       });
+    }
+
+    if (req.url.startsWith('/api/todo')) {
+      if (!todo) return send(404, {});
+
+      if (req.url === '/api/todo/lists') {
+        return send(200, { ok: true, lists: todo.lists });
+      }
+      if (req.method === 'POST' && req.url === '/api/todo') {
+        if (!body?.title) return send(400, { error: 'title is required.' });
+        const list = body.list || todo.lists.find((l) => l.isDefault)?.name;
+        if (!todo.lists.some((l) => l.name === list)) {
+          return send(404, { error: `No To Do list called "${list}".` });
+        }
+        return send(201, {
+          ok: true,
+          task: { id: 'task-1', title: body.title, list, dueDateTime: body.dueDate || null },
+        });
+      }
+      if (req.method === 'POST' && req.url === '/api/todo/complete') {
+        if (!body?.id) return send(400, { error: 'id is required.' });
+        return send(200, { ok: true, task: { id: body.id, title: 'Renew the domain', status: 'completed' } });
+      }
+      if (req.method === 'GET') {
+        return send(200, { ok: true, list: 'Tasks', tasks: todo.tasks || [] });
+      }
+      return send(404, {});
     }
 
     if (req.url === '/api/append') {

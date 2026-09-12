@@ -1,6 +1,6 @@
 {
   "name": "onenotesystem",
-  "version": "1.0.3",
+  "version": "1.1.0",
   "description": "Terminal client for OneNote System: create and update Microsoft OneNote pages from any shell, including Linux and locked-down work machines.",
   "license": "MIT",
   "type": "module",
