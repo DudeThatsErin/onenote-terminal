@@ -13,6 +13,10 @@ export async function startFakeBackend(options = {}) {
     hasDefaultSection = true,
     knownPages = ['Quick Inbox'],
     duplicateTitles = [],
+    // Impersonate some other site at this address: 'html404' is what an
+    // unrelated web app does with /api/health, and a string is a JSON service
+    // that answers but identifies itself as something else.
+    impersonate = null,
   } = options;
 
   const requests = [];
@@ -26,7 +30,13 @@ export async function startFakeBackend(options = {}) {
       res.end(JSON.stringify(payload));
     };
 
+    if (impersonate === 'html404') {
+      res.writeHead(404, { 'content-type': 'text/html' });
+      return res.end('<!DOCTYPE html><html><body>Not found</body></html>');
+    }
+
     if (req.url === '/api/health') {
+      if (typeof impersonate === 'string') return send(200, { ok: true, service: impersonate });
       return healthy
         ? send(200, { ok: true, service: 'onenote-system' })
         : send(503, { ok: false, error: 'DATABASE_URL is not configured.' });

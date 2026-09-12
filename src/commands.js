@@ -6,7 +6,7 @@ import { parseArgs, readStdin } from './args.js';
 import { Client } from './client.js';
 import { loadSettings, normalizeUrl, requireSettings, writeConfigFile } from './config.js';
 import { CliError, EXIT } from './exit.js';
-import { ask } from './prompt.js';
+import { createPrompter } from './prompt.js';
 
 // Mirrors MAX_NOTE_CONTENT_LENGTH on the deployment. Checked locally so a
 // pasted file that is far too long fails instantly instead of after an upload.
@@ -86,13 +86,24 @@ export async function configure(argv) {
     'configure'
   );
 
-  const url = normalizeUrl(flags.url || (await ask('OneNote System deployment URL: ')));
-  const apiKey = flags['api-key'] || (await ask('API key (input hidden): ', { secret: true }));
-  if (!apiKey) throw new CliError('an API key is required', EXIT.USAGE);
+  // Only open a prompter when something is actually missing, so a fully
+  // flagged `configure` works in scripts and containers with no terminal.
+  const prompter = flags.url && flags['api-key'] ? null : createPrompter();
+  let url;
+  let apiKey;
+  try {
+    url = normalizeUrl(flags.url || (await prompter.ask('OneNote System deployment URL: ')));
+    apiKey = flags['api-key'] || (await prompter.askSecret('API key (input hidden): '));
+  } finally {
+    prompter?.close();
+  }
+  if (!apiKey) {
+    throw new CliError(`an API key is required. Create one in Setup Step 5 at ${url}/setup`, EXIT.USAGE);
+  }
 
   if (!flags['no-verify']) {
     note('Checking the deployment...');
-    const health = await new Client({ url, apiKey }).get('/health', { authenticated: false, tolerate: [503] });
+    const health = await checkDeployment(url, apiKey);
     if (health.ok === false) {
       throw new CliError(health.error || 'the deployment reported that it is not healthy', EXIT.BACKEND);
     }
@@ -103,6 +114,38 @@ export async function configure(argv) {
   out(`Saved configuration to ${file}`);
   note('The API key is stored in that file with owner-only permissions and is never printed.');
   return EXIT.OK;
+}
+
+// Pointing at the wrong site is the most common setup mistake -- a personal
+// dashboard, a marketing page, a company intranet. Those answer, so the bare
+// transport error ("HTTP 404") reads like the deployment is broken rather than
+// like the URL is wrong. Name the real problem instead.
+const WRONG_SITE_CODES = new Set([EXIT.NOT_FOUND, EXIT.BACKEND, EXIT.USAGE]);
+
+async function checkDeployment(url, apiKey) {
+  let health;
+  try {
+    health = await new Client({ url, apiKey }).get('/health', { authenticated: false, tolerate: [503] });
+  } catch (err) {
+    if (err instanceof CliError && WRONG_SITE_CODES.has(err.code)) {
+      throw new CliError(
+        `${url} answered, but it is not a OneNote System deployment (GET ${url}/api/health said: ${err.message}). ` +
+        'Use the address of your own OneNote System deployment.',
+        EXIT.BACKEND
+      );
+    }
+    throw err; // network and auth failures already say the right thing
+  }
+
+  // A healthy deployment identifies itself. Anything else that happens to
+  // return JSON here is some other service.
+  if (health.service && health.service !== 'onenote-system') {
+    throw new CliError(
+      `${url} is running "${health.service}", not OneNote System. Use the address of your own OneNote System deployment.`,
+      EXIT.BACKEND
+    );
+  }
+  return health;
 }
 
 // ------------------------------------------------------------------- doctor

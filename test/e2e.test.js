@@ -340,6 +340,45 @@ test('doctor exits 6 and stays offline when nothing is configured', async () => 
   assert.match(result.stdout, /\(unset\)/);
 });
 
+// Pointing configure at a site that is not a OneNote System deployment is the
+// most common setup mistake; the error has to say so rather than blaming the
+// deployment.
+test('configure names the real problem when the URL is another website', async () => {
+  const backend = await startFakeBackend({ impersonate: 'html404' });
+  try {
+    const result = await cli(['configure', '--url', backend.url, '--api-key', VALID_KEY], { url: '', apiKey: '' });
+    assert.equal(result.code, EXIT.BACKEND);
+    assert.match(result.stderr, /is not a OneNote System deployment/);
+    assert.match(result.stderr, /HTTP 404/);
+  } finally {
+    await backend.close();
+  }
+});
+
+test('configure rejects a URL running a different service', async () => {
+  const backend = await startFakeBackend({ impersonate: 'some-other-app' });
+  try {
+    const result = await cli(['configure', '--url', backend.url, '--api-key', VALID_KEY], { url: '', apiKey: '' });
+    assert.equal(result.code, EXIT.BACKEND);
+    assert.match(result.stderr, /running "some-other-app", not OneNote System/);
+  } finally {
+    await backend.close();
+  }
+});
+
+// Without a terminal readline waits forever, which looks identical to a hang.
+test('configure without a terminal explains itself instead of hanging', async () => {
+  const backend = await startFakeBackend();
+  try {
+    const result = await cli(['configure', '--url', backend.url], { url: '', apiKey: '' });
+    assert.equal(result.code, EXIT.USAGE);
+    assert.match(result.stderr, /not a terminal/);
+    assert.match(result.stderr, /--api-key/);
+  } finally {
+    await backend.close();
+  }
+});
+
 test('configure --no-verify writes an owner-only config file', async () => {
   const backend = await startFakeBackend();
   try {
