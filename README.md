@@ -26,6 +26,18 @@ To run it once without installing:
 npx onenotesystem capture "Quick thought"
 ```
 
+## Getting help
+
+Every command documents itself. `--help` and `-h` work at the top level and on each command, and `help <command>` does the same thing:
+
+```bash
+onenotesystem --help              # commands, configuration, exit codes
+onenotesystem capture --help      # every flag capture accepts, with examples
+onenotesystem help append         # the same, spelled the other way
+```
+
+Aliases resolve too, so `onenotesystem new -h` shows the `capture` help.
+
 ## Configure
 
 You need a OneNote System deployment and an API key from its `/setup` page. If you do not have one yet, follow the [guided setup](https://onenotesystem.erinskidds.com/setup) first.

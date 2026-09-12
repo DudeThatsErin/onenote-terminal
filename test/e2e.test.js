@@ -48,6 +48,68 @@ test('--help and --version exit 0', async () => {
   assert.match(version.stdout.trim(), /^\d+\.\d+\.\d+$/);
 });
 
+test('every command has help via --help, -h, and `help <command>`', async () => {
+  for (const command of ['configure', 'doctor', 'capture', 'append']) {
+    for (const args of [[command, '--help'], [command, '-h'], ['help', command]]) {
+      const result = await cli(args, { url: '', apiKey: '' });
+      assert.equal(result.code, EXIT.OK, `${args.join(' ')} should exit 0`);
+      assert.match(result.stdout, new RegExp(`^onenotesystem ${command}`), `${args.join(' ')} should print ${command} help`);
+      assert.equal(result.stderr, '', `${args.join(' ')} should not warn`);
+    }
+  }
+});
+
+test('help resolves aliases to the command they stand for', async () => {
+  for (const [alias, canonical] of [['new', 'capture'], ['add', 'append']]) {
+    for (const args of [[alias, '--help'], ['help', alias]]) {
+      const result = await cli(args, { url: '', apiKey: '' });
+      assert.equal(result.code, EXIT.OK);
+      assert.match(result.stdout, new RegExp(`^onenotesystem ${canonical}`));
+    }
+  }
+});
+
+test('the top-level help lists every command and its aliases', async () => {
+  const result = await cli(['help'], { url: '', apiKey: '' });
+  assert.equal(result.code, EXIT.OK);
+  for (const command of ['configure', 'doctor', 'capture', 'append']) {
+    assert.match(result.stdout, new RegExp(`onenotesystem ${command}`));
+  }
+  assert.match(result.stdout, /alias: new/);
+  assert.match(result.stdout, /alias: add/);
+});
+
+test('an unknown help topic is a usage error', async () => {
+  const result = await cli(['help', 'bogus'], { url: '', apiKey: '' });
+  assert.equal(result.code, EXIT.USAGE);
+  assert.match(result.stderr, /no help topic for "bogus"/);
+});
+
+// Help is resolved before the flag parser, so this guards against `-h` being
+// silently swallowed as a positional and becoming a page title.
+test('help wins over sending a request, and never hits the network', async () => {
+  const backend = await startFakeBackend();
+  try {
+    const result = await cli(['capture', '-h'], { url: backend.url });
+    assert.equal(result.code, EXIT.OK);
+    assert.equal(backend.requests.length, 0);
+    assert.doesNotMatch(result.stdout, /Created/);
+  } finally {
+    await backend.close();
+  }
+});
+
+test('-h after -- is content, not a request for help', async () => {
+  const backend = await startFakeBackend();
+  try {
+    const result = await cli(['append', '--page-title', 'Quick Inbox', '--', '-h'], { url: backend.url });
+    assert.equal(result.code, EXIT.OK);
+    assert.equal(backend.lastRequest().body.content, '-h');
+  } finally {
+    await backend.close();
+  }
+});
+
 test('an unknown command is a usage error', async () => {
   const result = await cli(['frobnicate'], { url: '', apiKey: '' });
   assert.equal(result.code, EXIT.USAGE);
