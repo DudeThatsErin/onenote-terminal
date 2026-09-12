@@ -1,0 +1,45 @@
+{
+  "name": "onenotesystem",
+  "version": "1.0.0",
+  "description": "Terminal client for OneNote System: create and update Microsoft OneNote pages from any shell, including Linux and locked-down work machines.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "onenotesystem": "bin/onenotesystem.js",
+    "ons": "bin/onenotesystem.js"
+  },
+  "engines": {
+    "node": ">=18.17"
+  },
+  "files": [
+    "bin",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "prepublishOnly": "node --test test/*.test.js",
+    "start": "node bin/onenotesystem.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DudeThatsErin/OneNoteSystemTerminal.git"
+  },
+  "homepage": "https://onenotesystem.erinskidds.com/terminal",
+  "bugs": {
+    "url": "https://github.com/DudeThatsErin/OneNoteSystemTerminal/issues"
+  },
+  "keywords": [
+    "onenote",
+    "microsoft",
+    "microsoft-graph",
+    "notes",
+    "capture",
+    "cli",
+    "terminal",
+    "productivity",
+    "linux"
+  ],
+  "author": "Erin Skidds"
+}
