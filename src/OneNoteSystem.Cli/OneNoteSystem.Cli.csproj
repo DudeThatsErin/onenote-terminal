@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>OneNoteSystem.Cli</RootNamespace>
+    <AssemblyName>onenotesystem</AssemblyName>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>onenotesystem</ToolCommandName>
+    <PackageId>OneNoteSystem.Cli</PackageId>
+    <Description>Terminal client for OneNote System: create and update Microsoft OneNote pages from any shell.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="OneNoteSystem.Tests" />
+  </ItemGroup>
+
+</Project>
