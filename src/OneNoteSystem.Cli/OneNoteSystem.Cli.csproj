@@ -7,8 +7,21 @@
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>onenotesystem</ToolCommandName>
     <PackageId>OneNoteSystem.Cli</PackageId>
-    <Description>Terminal client for OneNote System: create and update Microsoft OneNote pages from any shell.</Description>
+    <Description>Terminal client for OneNote System: create and update Microsoft OneNote pages, and manage Microsoft To Do tasks, from any shell -- including Linux and locked-down work machines.</Description>
+    <PackageTags>onenote;microsoft-graph;microsoft-todo;notes;capture;cli;dotnet-tool;productivity</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://onenotesystem.erinskidds.com/terminal</PackageProjectUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <RepositoryType>git</RepositoryType>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+    <None Include="..\..\LICENSE" Pack="true" PackagePath="\" />
+  </ItemGroup>
 
   <ItemGroup>
     <InternalsVisibleTo Include="OneNoteSystem.Tests" />
