@@ -44,6 +44,15 @@ Install as a global tool from source:
 dotnet pack -c Release && dotnet tool install --global --add-source src/OneNoteSystem.Cli/bin/Release OneNoteSystem.Cli
 ```
 
+### Coming from npm
+
+Versions up to 1.1.0 shipped as the npm package `onenotesystem`. That package is
+deprecated and receives no further releases — uninstall it and install the .NET tool above:
+
+```bash
+npm uninstall -g onenotesystem
+```
+
 ## Commands
 
 | Command | Purpose |
