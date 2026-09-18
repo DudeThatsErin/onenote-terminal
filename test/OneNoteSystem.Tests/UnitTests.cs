@@ -131,10 +131,38 @@ public class DueDateTests
     public void Renders_a_bare_date_unchanged() => Assert.Equal("2026-09-15", DueDates.Format("2026-09-15"));
 
     // Microsoft To Do wants an IANA zone; a Windows id like "Eastern Standard Time" is rejected.
-    [Fact]
-    public void Reports_an_iana_time_zone()
+    // A UTC machine must say "UTC" rather than a tzdata alias such as "Universal", which is
+    // what a CI runner with TZ=UTC reports.
+    [Theory]
+    [InlineData("UTC")]
+    [InlineData("Universal")]
+    [InlineData("America/New_York")]
+    [InlineData("Eastern Standard Time")]
+    public void Reports_an_iana_time_zone(string machineZone)
     {
-        var zone = DueDates.LocalTimeZone();
+        var zone = RunWithLocalTimeZone(machineZone, DueDates.LocalTimeZone);
+
         Assert.True(zone == "UTC" || zone.Contains('/', StringComparison.Ordinal), zone);
+        Assert.NotEqual("Universal", zone);
+    }
+
+    /// <summary>
+    /// TimeZoneInfo.Local is cached per process and reads the TZ variable, so a test that
+    /// changes it has to clear the cache on both sides.
+    /// </summary>
+    private static string RunWithLocalTimeZone(string zone, Func<string> body)
+    {
+        var previous = Environment.GetEnvironmentVariable("TZ");
+        try
+        {
+            Environment.SetEnvironmentVariable("TZ", zone);
+            TimeZoneInfo.ClearCachedData();
+            return body();
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("TZ", previous);
+            TimeZoneInfo.ClearCachedData();
+        }
     }
 }

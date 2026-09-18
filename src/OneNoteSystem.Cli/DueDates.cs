@@ -73,12 +73,23 @@ public static partial class DueDates
             $"{flag} \"{value}\" is not a date. Try 2026-09-15, \"tomorrow\", or \"+3d\".", ExitCode.Usage);
     }
 
+    // tzdata ships several aliases for UTC, and a machine with TZ=UTC reports whichever one
+    // the platform happens to prefer -- "Universal" on a GitHub macOS runner, for instance.
+    // They are legal IANA ids, but Graph documents "UTC", so send that.
+    private static readonly HashSet<string> UtcAliases = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Universal", "Zulu", "UCT", "GMT", "GMT0", "GMT+0", "GMT-0", "Greenwich", "Etc/UTC", "Etc/UCT", "Etc/Universal", "Etc/Zulu", "Etc/GMT", "Etc/Greenwich",
+    };
+
     /// <summary>The caller's IANA zone, so the deployment can anchor a bare date correctly.</summary>
     public static string LocalTimeZone()
     {
         var local = TimeZoneInfo.Local;
-        if (local.HasIanaId) return local.Id;
-        return TimeZoneInfo.TryConvertWindowsIdToIanaId(local.Id, out var iana) ? iana : "UTC";
+        var id = local.HasIanaId
+            ? local.Id
+            : TimeZoneInfo.TryConvertWindowsIdToIanaId(local.Id, out var iana) ? iana : "UTC";
+
+        return UtcAliases.Contains(id) ? "UTC" : id;
     }
 
     /// <summary>Renders a due value for humans. A bare date has no time to show; anything else is a real moment.</summary>
